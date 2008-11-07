@@ -102,6 +102,14 @@ inherits from 'widget' if no direct superclasses are provided."
       (error "Widget ~a already has a parent." obj)
       (setf (slot-value obj 'parent) val)))
 
+(defgeneric valid-widget-p (widget)
+  (:documentation "Returns t when widget is a valid, renderable widget;
+   this includes strings, function, etc.")
+  (:method ((obj widget)) t)
+  (:method ((obj symbol)) t)
+  (:method ((obj function)) t)
+  (:method ((obj string)) t))
+
 ;;; Define widget-rendered-p for objects that don't derive from
 ;;; 'widget'
 (defmethod widget-rendered-p (obj)
@@ -118,6 +126,21 @@ inherits from 'widget' if no direct superclasses are provided."
 (defmethod (setf widget-parent) (obj val)
   (declare (ignore obj val))
   nil)
+
+(defgeneric make-widget-place-writer (container widget)
+  (:documentation "Returns a function accepting (&optional ARG) that
+   encapsulates the place where widget is stored, behaving like this:
+
+      When ARG not given, return the current contained widget.
+      Otherwise, put ARG in the place, set ARG's parent to CONTAINER,
+      and dirty CONTAINER.  Signal an error if this place is no longer
+      valid or ARG is null.
+
+   Any widget that supports flows must implement this function.  Part
+   of the contract is that the fn sets the parent slot of the callee
+   to the container.  The other part is that the widget is dirty after
+   the write via a direct call to make-dirty, or to a write to a
+   widget slot."))
 
 (defgeneric with-widget-header (obj body-fn &rest args &key
 				    widget-prefix-fn widget-suffix-fn

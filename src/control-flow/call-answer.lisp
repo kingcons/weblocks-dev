@@ -1,7 +1,8 @@
 
 (in-package :weblocks)
 
-(export '(do-widget do-page do-modal answer))
+(export '(do-widget do-page do-modal answer make-widget-place-writer 
+          adopt-widget))
 
 ;;; Specialize widget-continuation
 (defmethod widget-continuation ((widget function))
@@ -28,9 +29,9 @@ function, continuation is curried as a first parameter and the result
 is returned. Otherwise, continuation isn't saved."
   (let/cc k
     (setf (widget-continuation callee) k)
-    (funcall op (if (functionp callee)
-		    (curry callee k)
-		    callee))
+    (safe-funcall op (if (functionp callee)
+			 (curry callee k)
+			 callee))
     t))
 
 (defun answer (continuation &optional result)
@@ -42,6 +43,16 @@ continuation, recursively tries its parents."
       (safe-funcall (widget-continuation continuation) result)
       (when (widget-parent continuation)
 	(answer (widget-parent continuation) result))))
+
+(defun adopt-widget (parent widget)
+  "Like (setf (widget-parent WIDGET) PARENT), but signal an error when
+WIDGET already has a parent (even if it's PARENT)."
+  (let ((old-parent (widget-parent widget)))
+    (if old-parent
+	(error "Widget ~A already has parent ~A; cannot write parent" 
+	       widget old-parent)
+	(setf (widget-parent widget) parent)))
+  (values))
 
 ;; Places 'callee' in the place of 'widget', saves the continuation,
 ;; and returns from the delimited computation. When 'callee' answers,
@@ -55,6 +66,19 @@ continuation, recursively tries its parents."
       (do-root-widget callee wrapper-fn)
       (do-widget-aux widget callee wrapper-fn)))
 
+(defun/cc do-widget-aux (widget callee &optional (wrapper-fn #'identity))
+  (let* ((parent (or (widget-parent widget)
+		     (error "Attempted to replace widget ~S which has no parent!"
+			    widget)))
+	 (place-writer (make-widget-place-writer parent widget)))
+    (prog1
+	(call callee
+	      (lambda (new-callee)
+		(funcall place-writer (funcall wrapper-fn new-callee))))
+      (funcall place-writer widget))))
+
+;; This function is aware of the internal structure of the root composite;
+;; this should be OK as it's a special case; it does violate the contract.
 (defun/cc do-root-widget (callee  &optional (wrapper-fn #'identity))
   (let* ((old-value (composite-widgets (root-composite))))
     (prog1
@@ -65,23 +89,6 @@ continuation, recursively tries its parents."
       (setf (composite-widgets (root-composite))
 	    old-value))))
 
-(defun/cc do-widget-aux (widget callee &optional (wrapper-fn #'identity))
-  (let* ((parent (widget-parent widget))
-	 (place (member widget (composite-widgets parent))))
-    (unless parent
-      (error "Attempted to replace widget ~S which has no parent!" widget))
-    (unless place
-      (error "Widget ~S cannot be found in parent ~S."
-	     widget parent))
-    (flet ((place-widget (value)
-	     (rplaca place value)
-	     (setf (composite-widgets parent)
-		   (composite-widgets parent))))
-      (prog1
-	  (call callee
-		(lambda (new-callee)
-		  (place-widget (funcall wrapper-fn new-callee))))
-	(place-widget widget)))))
 
 ;; Sets 'callee' as the only widget in the root composite, saves the
 ;; continuation, and returns from the delimited computation. When
