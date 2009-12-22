@@ -142,8 +142,13 @@ declared AUTOSTART."
                                 (tokenize-uri app-prefix nil)
                                 :test #'string=))
          (no-cache) ; disable caching for dynamic pages
-         (return-from weblocks-dispatcher (f0 (handle-client-request app)))))))
-      (log-message :debug "Application dispatch failed for '~A'" (script-name request)))
+	 (return-from weblocks-dispatcher 
+	   #'(lambda ()
+	       (handler-bind 
+		   ((error (f (e) (safe-funcall *debugger-hook* 
+						e *debugger-hook*))))
+		 (handle-client-request app))))))))
+  (log-message :debug "Application dispatch failed for '~A'" (script-name request)))
 
 ;; Redirect to default app if all other handlers fail
 (setf hunchentoot:*default-handler*
