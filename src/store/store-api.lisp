@@ -33,6 +33,21 @@
   `defwebapp' in the same package, barring an explicit setting, the
   webapp will be set to use the defined store automatically.")
 
+(defgeneric store-thread-setup (store)
+  (:documentation "A function that performs any necessary per-thread or
+per-request setup of the database connection."))
+
+(defgeneric store-thread-teardown (store)
+  (:documentation "A function that performs any necessary per-thread or
+per-request cleanup or removal of the database connection."))
+
+(defgeneric use-thread-hooks-p (store)
+  (:documentation "Determines whether or not `store-thread-setup' and
+`store-thread-teardown' are used.")
+  (:method (store)
+    (declare (ignore store))
+    nil))
+
 ;;; Transactions
 (defgeneric begin-transaction (store)
   (:documentation "Begins a transaction on 'store'. Note, if the given

@@ -26,7 +26,7 @@
 (defvar *request-timeout* 180
   "Seconds until we abort a request because it took too long.
   This prevents threads from hogging the CPU indefinitely.
-  
+
   You can set this to NIL to disable timeouts (not recommended).")
 
 (defvar *backtrace-on-session-init-error* t)
@@ -75,7 +75,7 @@ customize behavior."))
                                   (error "Your request timed out."))))
     ;; TRIVIAL-TIMEOUT seems to be broken on CCL and in yet another way on
     ;; Lispworks. For now let's only enable it on SBCL.
-    (#-sbcl progn 
+    (#-sbcl progn
      #+sbcl with-timeout #+sbcl (*request-timeout*)
       (webapp-update-thread-status "Request prelude")
       (unwind-protect
@@ -116,7 +116,7 @@ customize behavior."))
 	  (let (finished?)
 	    (unwind-protect
 		 (progn
-                   (handler-bind ((error (lambda (c) 
+                   (handler-bind ((error (lambda (c)
                                            (warn "Error initializing user session: ~A" c)
                                            (when *backtrace-on-session-init-error*
                                              (format t "~%~A~%" (print-trivial-backtrace c)))
@@ -158,6 +158,9 @@ customize behavior."))
           (eval-hook :pre-action)
           (with-dynamic-hooks (:dynamic-action)
             (eval-action))
+          (mapstores (lambda (store)
+                       (when (use-thread-hooks-p store)
+                         (store-thread-setup store))))
           (eval-hook :post-action))
 
 	(when (and (not (ajax-request-p))
@@ -171,6 +174,9 @@ customize behavior."))
             (if (ajax-request-p)
               (handle-ajax-request app)
               (handle-normal-request app)))
+          (mapstores (lambda (store)
+                       (when (use-thread-hooks-p store)
+                         (store-thread-teardown store))))
           (eval-hook :post-render))
 
 	(unless (ajax-request-p)
@@ -242,7 +248,7 @@ customize behavior."))
 (defun session-lock ()
   (bordeaux-threads:with-lock-held (*session-lock-table-lock*)
     (unless (gethash *session* *session-locks*)
-      (setf (gethash *session* *session-locks*) 
+      (setf (gethash *session* *session-locks*)
             (bordeaux-threads:make-lock (format nil "session lock for session ~S" *session*))))
     (gethash *session* *session-locks*)))
 
@@ -265,7 +271,7 @@ customize behavior."))
   ; set page title if it isn't already set
   (when (and (null *current-page-description*)
              (last (all-tokens *uri-tokens*)))
-    (setf *current-page-description* 
+    (setf *current-page-description*
           (humanize-name (last-item (all-tokens *uri-tokens*)))))
   ; render page will wrap the HTML already rendered to
   ; *weblocks-output-stream* with necessary boilerplate HTML
@@ -331,7 +337,7 @@ association list. This function is normally called by
 		     do (setf *dirty-widgets* '())
 		     nconc (render-enqueued dirty))))
       (let ((rendered-widgets (absorb-dirty-widgets)))
-        (write 
+        (write
           (encode-json-alist-to-string
             `(("widgets" . ,rendered-widgets)
               ("before-load" . ,*before-ajax-complete-scripts*)
@@ -340,7 +346,7 @@ association list. This function is normally called by
           :escape nil)))))
 
 (defun action-txn-hook (hooks)
-  "This is a dynamic action hook that wraps POST actions using the 
+  "This is a dynamic action hook that wraps POST actions using the
    weblocks transaction functions over all stores"
   (if (eq (request-method*) :post)
       (let (tx-error-occurred-p)
@@ -369,7 +375,7 @@ association list. This function is normally called by
 	      (unless tx-error-occurred-p
 		(mapc #'commit-transaction non-dynamic-stores))))))
       (eval-dynamic-hooks hooks)))
-  
+
 ;; a default dynamic-action hook function wraps actions in a transaction
 (eval-when (:load-toplevel)
   (pushnew 'action-txn-hook
