@@ -131,7 +131,8 @@ arguments are required."
 (defmethod find-persistent-objects ((store database-connection) class-name
 				    &key order-by range where
 				    &allow-other-keys)
-  (let* ((base-expr `(:select '* :from ,class-name ,@(when where (list :where where))))
+  (let* ((base-expr `(:select '* :from ,(dao-table-name class-name)
+                              ,@(when where (list :where where))))
 	 (order-expr (or `(,@(when order-by
 			       `(:order-by ,base-expr ,(car order-by)))) base-expr))
 	 (sql-expr (or `(,@(when range
@@ -140,6 +141,6 @@ arguments are required."
 
 (defmethod count-persistent-objects ((store database-connection) class-name
 				     &key where &allow-other-keys)
-  (let ((sql-expr `(:select (:count '*) :from ,class-name
+  (let ((sql-expr `(:select (:count '*) :from ,(dao-table-name class-name)
 			    ,@(when where (list :where where)))))
     (query (sql-compile sql-expr) :single)))
