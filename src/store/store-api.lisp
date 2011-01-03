@@ -6,7 +6,8 @@
 	  dynamic-transaction use-dynamic-transaction-p
 	  persist-object delete-persistent-object
 	  delete-persistent-object-by-id find-persistent-objects
-	  find-persistent-object-by-id count-persistent-objects))
+	  find-persistent-object-by-id count-persistent-objects
+          store-thread-setup store-thread-teardown use-thread-hooks-p))
 
 ;;; Store initialization and finalization
 (defgeneric open-store (store-type &rest args)
@@ -34,16 +35,17 @@
   webapp will be set to use the defined store automatically.")
 
 (defgeneric store-thread-setup (store)
-  (:documentation "A function that performs any necessary per-thread or
-per-request setup of the database connection."))
+  (:documentation "A function that returns a fresh connection to
+rebind the database symbol to per-thread."))
 
 (defgeneric store-thread-teardown (store)
-  (:documentation "A function that performs any necessary per-thread or
-per-request cleanup or removal of the database connection."))
+  (:documentation "A function that performs any necessary per-thread
+cleanup or removal of the database connection."))
 
 (defgeneric use-thread-hooks-p (store)
   (:documentation "Determines whether or not `store-thread-setup' and
-`store-thread-teardown' are used.")
+`store-thread-teardown' are used by returning NIL or the symbol denoting
+the database connection that should be rebound per-thread.")
   (:method (store)
     (declare (ignore store))
     nil))

@@ -154,30 +154,32 @@ customize behavior."))
 	  (abort-request-handler (eval-action))) ; FIXME: what about the txn hook?
 
         (webapp-update-thread-status "Processing action")
-        (timing "action processing (w/ hooks)"
-          (eval-hook :pre-action)
-          (with-dynamic-hooks (:dynamic-action)
-            (eval-action))
-          (mapstores (lambda (store)
-                       (when (use-thread-hooks-p store)
-                         (store-thread-setup store))))
-          (eval-hook :post-action))
+        (progv
+            (remove-if #'null (mapcar #'use-thread-hooks-p *store-names*))
+            (mapcar #'store-thread-setup
+                    (remove-if-not #'use-thread-hooks-p *store-names*))
 
-	(when (and (not (ajax-request-p))
-		   (find *action-string* (get-parameters*)
-			 :key #'car :test #'string-equal))
-	  (redirect (remove-action-from-uri (request-uri*))))
+          (timing "action processing (w/ hooks)"
+            (eval-hook :pre-action)
+            (with-dynamic-hooks (:dynamic-action)
+              (eval-action))
+            (eval-hook :post-action))
 
-        (timing "rendering (w/ hooks)"
-          (eval-hook :pre-render)
-          (with-dynamic-hooks (:dynamic-render)
-            (if (ajax-request-p)
-              (handle-ajax-request app)
-              (handle-normal-request app)))
-          (mapstores (lambda (store)
-                       (when (use-thread-hooks-p store)
-                         (store-thread-teardown store))))
-          (eval-hook :post-render))
+          (when (and (not (ajax-request-p))
+                     (find *action-string* (get-parameters*)
+                           :key #'car :test #'string-equal))
+            (redirect (remove-action-from-uri (request-uri*))))
+
+          (timing "rendering (w/ hooks)"
+            (eval-hook :pre-render)
+            (with-dynamic-hooks (:dynamic-render)
+              (if (ajax-request-p)
+                  (handle-ajax-request app)
+                  (handle-normal-request app)))
+            (eval-hook :post-render))
+
+          (dolist (store (remove-if #'null (mapcar #'use-thread-hooks-p *store-names*)))
+            (store-thread-teardown store)))
 
 	(unless (ajax-request-p)
 	  (setf (webapp-session-value 'last-request-uri) (all-tokens *uri-tokens*)))
