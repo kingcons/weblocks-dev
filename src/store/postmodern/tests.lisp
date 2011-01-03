@@ -10,6 +10,7 @@
 (defparameter *pass* nil)
 (defparameter *host* nil)
 
+;(defstore *postmodern-store* :postmodern *db* *user* *pass* *host* :pooled-p t)
 (defparameter *postmodern-store* nil)
 (defparameter *test-status* (list nil nil nil nil nil))
 
@@ -151,7 +152,7 @@
 	(*pass* pass)
 	(*host* host))
     (setf *postmodern-store* (open-store :postmodern :db *db* :user *user*
-					 :pass *pass* :host *host*))
+                                         :pass *pass* :host *host*))
     (unwind-protect (test-all)
       (if (notevery #'null *test-status*)
 	  (format t "All tests passed!~%")

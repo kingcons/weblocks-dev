@@ -13,22 +13,13 @@
 (defvar *nested-transaction-behavior* :ignore
   "Should be one of :warn, :error or :ignore.
 Defines how the system responds when an attempt is made
-to nest transactions. :warn and :ignore do not initiate
-a transaction via SQL BEGIN.")
+to nest transactions.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization/finalization ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmethod open-store ((store-type (eql :postmodern)) &rest args
-		       &key db user pass host
-		       (pooled-p t) (port 5432) (use-ssl :no))
-  "You /really/ want to use thread pools. They're good for you
-so we use them by default. The db, user, pass and host keyword
-arguments are required."
-  (declare (ignore args))
-  (assert (and db user pass host))
-  (setf *default-store* (connect db user pass host
-				 :port port :pooled-p pooled-p :use-ssl use-ssl))
+(defmethod open-store ((store-type (eql :postmodern)) &rest args)
+  (setf *default-store* (apply #'connect args))
   (setf *database* *default-store*))
 
 (defmethod close-store ((store database-connection))
@@ -46,6 +37,17 @@ arguments are required."
   ;; (query (:drop-sequence seq)))
   (dolist (view (list-views))
     (query (:drop-view view))))
+
+(defmethod store-thread-setup ((store database-connection))
+  (with-slots (database user password host) store
+    (connect database user password host :pooled-p t)))
+
+(defmethod store-thread-teardown ((store database-connection))
+  (disconnect store))
+
+(defmethod use-thread-hooks-p ((store database-connection))
+  (declare (ignore store))
+  '*database*)
 
 
 ;;;;;;;;;;;;;;;;;;;;

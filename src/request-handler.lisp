@@ -155,9 +155,13 @@ customize behavior."))
 
         (webapp-update-thread-status "Processing action")
         (progv
-            (remove-if #'null (mapcar #'use-thread-hooks-p *store-names*))
+            (remove-if #'null (mapcar (lambda (symbol)
+                                        (use-thread-hooks-p (symbol-value symbol)))
+                                      *store-names*))
             (mapcar #'store-thread-setup
-                    (remove-if-not #'use-thread-hooks-p *store-names*))
+                    (remove-if-not (lambda (symbol)
+                                     (use-thread-hooks-p (symbol-value symbol)))
+                                   *store-names*))
 
           (timing "action processing (w/ hooks)"
             (eval-hook :pre-action)
@@ -178,8 +182,10 @@ customize behavior."))
                   (handle-normal-request app)))
             (eval-hook :post-render))
 
-          (dolist (store (remove-if #'null (mapcar #'use-thread-hooks-p *store-names*)))
-            (store-thread-teardown store)))
+          (map nil #'store-thread-teardown
+               (remove-if #'null (mapcar (lambda (symbol)
+                                           (use-thread-hooks-p (symbol-value symbol)))
+                                         *store-names*))))
 
 	(unless (ajax-request-p)
 	  (setf (webapp-session-value 'last-request-uri) (all-tokens *uri-tokens*)))
