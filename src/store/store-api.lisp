@@ -2,12 +2,12 @@
 (in-package :weblocks)
 
 (export '(open-store close-store clean-store *default-store*
-	  begin-transaction commit-transaction rollback-transaction
-	  dynamic-transaction use-dynamic-transaction-p
-	  persist-object delete-persistent-object
-	  delete-persistent-object-by-id find-persistent-objects
-	  find-persistent-object-by-id count-persistent-objects
-          store-thread-setup store-thread-teardown use-thread-hooks-p))
+          begin-transaction commit-transaction rollback-transaction
+          dynamic-transaction use-dynamic-transaction-p
+          persist-object delete-persistent-object
+          delete-persistent-object-by-id find-persistent-objects
+          find-persistent-object-by-id count-persistent-objects
+          store-thread-setup store-thread-teardown store-progv-symbols))
 
 ;;; Store initialization and finalization
 (defgeneric open-store (store-type &rest args)
@@ -42,10 +42,10 @@ rebind the database symbol to per-thread."))
   (:documentation "A function that performs any necessary per-thread
 cleanup or removal of the database connection."))
 
-(defgeneric use-thread-hooks-p (store)
+(defgeneric store-progv-symbols (store)
   (:documentation "Determines whether or not `store-thread-setup' and
-`store-thread-teardown' are used by returning NIL or the symbol denoting
-the database connection that should be rebound per-thread.")
+`store-thread-teardown' are used by returning NIL or the symbol or symbols
+denoting the database connection that should be rebound per-thread.")
   (:method (store)
     (declare (ignore store))
     nil))
@@ -73,17 +73,17 @@ the database connection that should be rebound per-thread.")
   STORE.  See `use-dynamic-transaction-p' for details.")
   (:method (store proc)
     (warn "~S should not be called when the other transaction ~
-	   interface is available" 'dynamic-transaction)
+           interface is available" 'dynamic-transaction)
     (let (tx-error-occurred-p)
       (unwind-protect
-	   (handler-bind ((error #'(lambda (error)
-				     (declare (ignore error))
-				     (rollback-transaction store)
-				     (setf tx-error-occurred-p t))))
-	     (begin-transaction store)
-	     (funcall proc))
-	(unless tx-error-occurred-p
-	  (commit-transaction store))))))
+           (handler-bind ((error #'(lambda (error)
+                                     (declare (ignore error))
+                                     (rollback-transaction store)
+                                     (setf tx-error-occurred-p t))))
+             (begin-transaction store)
+             (funcall proc))
+        (unless tx-error-occurred-p
+          (commit-transaction store))))))
 
 (defgeneric use-dynamic-transaction-p (store)
   (:documentation "Answer whether `action-txn-hook' and equivalents
@@ -120,8 +120,8 @@ the database connection that should be rebound per-thread.")
   found, returns NIL."))
 
 (defgeneric find-persistent-objects (store class-name
-					   &key order-by range
-					   &allow-other-keys)
+                                     &key order-by range
+                                     &allow-other-keys)
   (:documentation "Looks up and returns objects of appropriate
   'class-name' in the 'store' bound by the given keyword
   parameters.
