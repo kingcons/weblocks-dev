@@ -155,10 +155,14 @@ customize behavior."))
 
         (webapp-update-thread-status "Processing action")
         (progv
+            ;; Returns a list of symbols to rebind
             (remove nil (mapcar (lambda (symbol)
                                   (store-progv-symbols (symbol-value symbol)))
                                 *store-names*))
-            (mapcar #'store-thread-setup
+            ;; Returns a list of new bindings for the above symbols
+            (mapcar (lambda (symbol)
+                      (store-thread-setup (symbol-value symbol)))
+                    ; Returns a list of store symbols that need setup called
                     (remove-if-not (lambda (symbol)
                                      (store-progv-symbols (symbol-value symbol)))
                                    *store-names*))
@@ -182,7 +186,9 @@ customize behavior."))
                   (handle-normal-request app)))
             (eval-hook :post-render))
 
-          (map nil #'store-thread-teardown
+          (map nil (lambda (symbol)
+                     (store-thread-teardown (symbol-value symbol)))
+               ; Returns a list of store symbols that need teardown called
                (remove nil (mapcar (lambda (symbol)
                                      (store-progv-symbols (symbol-value symbol)))
                                    *store-names*))))

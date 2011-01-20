@@ -39,8 +39,8 @@ to nest transactions.")
     (query (:drop-view view))))
 
 (defmethod store-thread-setup ((store database-connection))
-  (with-slots (database user password host) store
-    (connect database user password host :pooled-p t)))
+  (let ((args (butlast (postmodern::connection-pool-type store) 2)))
+    (apply #'connect (append args '(:pooled-p t)))))
 
 (defmethod store-thread-teardown ((store database-connection))
   (disconnect store))
