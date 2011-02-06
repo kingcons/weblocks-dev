@@ -109,23 +109,12 @@ customize behavior."))
     (let ((*request-hook* (make-instance 'request-hooks))
           *dirty-widgets*)
       (when (null (root-widget))
-<<<<<<< local
-        (let ((root-widget (make-instance 'widget :name "root")))
-          (when (weblocks-webapp-debug app)
-            (initialize-debug-actions))
-          (setf (root-widget) root-widget)
-          (let (finished?)
-            (unwind-protect
-                 (progn
-                   (handler-bind ((error (lambda (c)
-=======
 	(let ((root-widget (make-instance 'widget :name "root")))
 	  (setf (root-widget) root-widget)
 	  (let (finished?)
 	    (unwind-protect
 		 (progn
-                   (handler-bind ((error (lambda (c) 
->>>>>>> other
+                   (handler-bind ((error (lambda (c)
                                            (warn "Error initializing user session: ~A" c)
                                            (when *backtrace-on-session-init-error*
                                              (format t "~%~A~%" (print-trivial-backtrace c)))
